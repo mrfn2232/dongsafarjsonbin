@@ -1,0 +1,1323 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاسبه دنگ سفر - محمدرضا</title>
+    <style>
+        body {
+            font-family: 'Vazirmatn', Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            direction: rtl;
+            text-align: right;
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            color: #006064;
+            text-align: center;
+            font-size: 2em;
+        }
+        .container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        input, select, button {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        button {
+            background-color: #00796b;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #004d40;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: right;
+        }
+        th {
+            background-color: #00796b;
+            color: white;
+        }
+        .summary, .instant-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e0f2f1;
+            border-radius: 8px;
+        }
+        .period-selector, .person-form, .expense-form, .trust-form {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .delete-btn {
+            background-color: #d32f2f;
+        }
+        .delete-btn:hover {
+            background-color: #b71c1c;
+        }
+        .edit-btn {
+            background-color: #f57c00;
+        }
+        .edit-btn:hover {
+            background-color: #e65100;
+        }
+        .end-period-btn {
+            background-color: #0288d1;
+        }
+        .end-period-btn:hover {
+            background-color: #01579b;
+        }
+        .report-btn {
+            background-color: #388e3c;
+        }
+        .report-btn:hover {
+            background-color: #2e7d32;
+        }
+        .hide-btn {
+            background-color: #f57c00;
+        }
+        .hide-btn:hover {
+            background-color: #e65100;
+        }
+        .show-btn {
+            background-color: #0288d1;
+        }
+        .show-btn:hover {
+            background-color: #01579b;
+        }
+        .visibility-btn {
+            background-color: #0288d1;
+        }
+        .visibility-btn:hover {
+            background-color: #01579b;
+        }
+        .total-report {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .person-share {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .highlight {
+            color: #00796b;
+            font-weight: bold;
+        }
+        .add-expense-btn {
+            background-color: #d32f2f;
+            font-size: 1.2em;
+        }
+        .add-expense-btn:hover {
+            background-color: #b71c1c;
+        }
+        .fixed-period {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #00796b;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 1em;
+        }
+        .fixed-back-btn {
+            position: fixed;
+            top: 50px;
+            left: 20px;
+            background: #0288d1;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 1em;
+            border: none;
+            cursor: pointer;
+            display: none;
+        }
+        .fixed-back-btn:hover {
+            background: #01579b;
+        }
+        #personTable, #trustTable, #expenseTable, #userExpenseTable {
+            margin-top: 10px;
+            width: 100%;
+            font-size: 0.9em;
+        }
+        #mainPage, #reportPage {
+            display: none;
+        }
+        #mainPage.active, #reportPage.active {
+            display: block;
+        }
+        #passwordPrompt {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .password-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .password-container input {
+            width: 80%;
+            margin: 10px 0;
+        }
+        .password-container button {
+            background-color: #00796b;
+        }
+        .password-container button:hover {
+            background-color: #004d40;
+        }
+        @media (max-width: 600px) {
+            input, select, button {
+                width: 100%;
+                margin: 5px 0;
+            }
+            .fixed-period {
+                padding: 8px 15px;
+                font-size: 0.9em;
+                width: 80%;
+                text-align: center;
+            }
+            .fixed-back-btn {
+                top: 60px;
+                left: 10px;
+                padding: 8px 15px;
+                font-size: 0.9em;
+            }
+            button {
+                font-size: 0.9em;
+                padding: 8px;
+            }
+            .password-container {
+                width: 90%;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div id="passwordPrompt">
+        <div class="password-container">
+            <h3>ورود به برنامه</h3>
+            <input type="password" id="passwordInput" placeholder="رمز عبور را وارد کنید">
+            <button onclick="checkPassword()">ورود</button>
+        </div>
+    </div>
+    <div id="fixedPeriod" class="fixed-period" style="display: none;"></div>
+    <button id="fixedBackBtn" class="fixed-back-btn" onclick="showMainPage()">بازگشت به ورودی‌ها</button>
+    <h2>محاسبه دنگ سفر - محمدرضا</h2>
+    <div class="container">
+        <!-- صفحه اصلی (ورودی‌ها) -->
+        <div id="mainPage" class="active">
+            <div class="period-selector">
+                <h3>مدیریت دوره‌ها</h3>
+                <div id="periodManagement" style="display: none;">
+                    <input type="text" id="periodName" placeholder="نام دوره (مثلا سفر شمال)">
+                    <button onclick="addPeriod()">ایجاد دوره</button>
+                </div>
+                <select id="periodSelect" onchange="loadPeriod()">
+                    <option value="">انتخاب دوره</option>
+                </select>
+                <div id="visibilityControls" style="display: none;">
+                    <button class="visibility-btn" onclick="togglePeriodVisibility(true)">نمایش دوره</button>
+                    <button class="visibility-btn" onclick="togglePeriodVisibility(false)">عدم نمایش دوره</button>
+                </div>
+                <table id="userExpenseTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>نام فرد/گروه</th>
+                            <th>موضوع</th>
+                            <th>مبلغ</th>
+                            <th>سهم این هزینه</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userExpenseBody"></tbody>
+                </table>
+            </div>
+
+            <div class="person-form" id="personForm" style="display: none;">
+                <h3>اضافه کردن افراد</h3>
+                <input type="text" id="personName" placeholder="نام فرد یا گروه">
+                <label>آیا گروه است؟</label>
+                <select id="isGroup" onchange="toggleGroupInput()">
+                    <option value="no">خیر</option>
+                    <option value="yes">بله</option>
+                </select>
+                <div id="groupCountDiv" style="display: none;">
+                    <input type="number" id="groupCount" value="1" min="1" placeholder="تعداد نفرات گروه">
+                </div>
+                <button onclick="addPerson()">اضافه کردن</button>
+                <button onclick="hidePersonTable()" class="hide-btn">عدم نمایش لیست افراد</button>
+                <button onclick="showPersonTable()" class="show-btn">نمایش لیست افراد</button>
+                <table id="personTable">
+                    <thead>
+                        <tr>
+                            <th>نام</th>
+                            <th>نوع</th>
+                            <th>تعداد نفرات</th>
+                            <th>حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="personBody"></tbody>
+                </table>
+            </div>
+
+            <div class="expense-form" id="expenseForm">
+                <h3>اضافه کردن هزینه</h3>
+                <select id="expensePerson">
+                    <option value="">انتخاب فرد یا گروه</option>
+                </select>
+                <input type="text" id="expenseSubject" placeholder="موضوع هزینه (مثلا غذا)">
+                <input type="number" id="expenseAmount" placeholder="مبلغ به تومان">
+                <select id="calcMethod">
+                    <option value="equal">تقسیم مساوی</option>
+                    <option value="ratio" selected>تقسیم به نسبت نفرات</option>
+                    <option value="custom">تقسیم به میزان دلخواه</option>
+                    <option value="customRatio">تقسیم به نسبت با ضریب جدید</option>
+                </select>
+                <div id="customAmounts" style="display: none;">
+                    <h4>مبالغ دلخواه</h4>
+                    <div id="customInputs"></div>
+                </div>
+                <div id="customRatioInputs" style="display: none;">
+                    <h4>ضرایب دلخواه</h4>
+                    <div id="ratioInputs"></div>
+                </div>
+                <button onclick="addExpense()" class="add-expense-btn">اضافه کردن هزینه</button>
+            </div>
+
+            <div class="trust-form" id="trustForm" style="display: none;">
+                <h3>پرداخت تنخواه</h3>
+                <select id="trustPayer">
+                    <option value="">انتخاب پرداخت‌کننده</option>
+                </select>
+                <select id="trustReceiver">
+                    <option value="">انتخاب دریافت‌کننده</option>
+                </select>
+                <input type="number" id="trustAmount" placeholder="مبلغ به تومان">
+                <button onclick="addTrust()">ثبت تنخواه</button>
+                <button onclick="hideTrustTable()" class="hide-btn">عدم نمایش لیست تنخواه‌ها</button>
+                <button onclick="showTrustTable()" class="show-btn">نمایش لیست تنخواه‌ها</button>
+                <table id="trustTable">
+                    <thead>
+                        <tr>
+                            <th>پرداخت‌کننده</th>
+                            <th>دریافت‌کننده</th>
+                            <th>مبلغ</th>
+                            <th>حذف</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trustBody"></tbody>
+                </table>
+            </div>
+
+            <div class="instant-result" id="instantResult"></div>
+            <div class="summary" id="summary">
+                <button onclick="showReportPage()" class="report-btn">مشاهده گزارش‌ها</button>
+                <button onclick="generateExcelReport()" class="report-btn" style="margin-left:10px;">تهیه گزارش اکسل</button>
+                <button id="endPeriodBtn" onclick="endPeriod()" class="end-period-btn" style="margin-left:10px; display: none;">اتمام دوره</button>
+                <button id="resetPeriodBtn" onclick="resetPeriod()" class="delete-btn" style="margin-left:10px; display: none;">ریست دوره فعلی</button>
+            </div>
+        </div>
+
+        <!-- صفحه گزارش‌ها -->
+        <div id="reportPage">
+            <table id="expenseTable">
+                <thead>
+                    <tr>
+                        <th>نام فرد/گروه</th>
+                        <th>موضوع</th>
+                        <th>مبلغ</th>
+                        <th>سهم این هزینه</th>
+                        <th>اقدامات</th>
+                    </tr>
+                </thead>
+                <tbody id="expenseBody"></tbody>
+            </table>
+            <div class="summary">
+                <button onclick="showTotalShares()">نمایش گزارش نهایی</button>
+                <button onclick="hideTotalReport()" class="hide-btn" style="margin-left:10px;">عدم نمایش گزارش نهایی</button>
+                <div id="totalReport" class="total-report"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = '$2a$10$CRhinAZUCBLtBBZalvCmnu2nZ4hSHB.4CzPqZ1fAskVWZKMWRh9/G';
+        const BIN_ID = '6810ad778a456b796693c5a9';
+        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+        let periods = {};
+        let currentPeriod = null;
+        let userRole = null;
+        let editingExpenseIndex = null;
+
+        function checkPassword() {
+            const password = document.getElementById('passwordInput').value;
+            if (password === '22322344') {
+                userRole = 'user';
+                document.getElementById('passwordPrompt').style.display = 'none';
+                document.getElementById('mainPage').classList.add('active');
+                document.getElementById('resetPeriodBtn').style.display = 'none';
+                document.getElementById('endPeriodBtn').style.display = 'none';
+                document.getElementById('personForm').style.display = 'none';
+                document.getElementById('trustForm').style.display = 'none';
+                document.getElementById('periodManagement').style.display = 'none';
+                document.getElementById('visibilityControls').style.display = 'none';
+                document.getElementById('userExpenseTable').style.display = 'table';
+                initializeApp();
+            } else if (password === 'Fa22322344!' || password === 'admin') {
+                userRole = 'admin';
+                document.getElementById('passwordPrompt').style.display = 'none';
+                document.getElementById('mainPage').classList.add('active');
+                document.getElementById('resetPeriodBtn').style.display = 'inline-block';
+                document.getElementById('endPeriodBtn').style.display = 'inline-block';
+                document.getElementById('personForm').style.display = 'block';
+                document.getElementById('trustForm').style.display = 'block';
+                document.getElementById('periodManagement').style.display = 'block';
+                document.getElementById('visibilityControls').style.display = 'block';
+                document.getElementById('userExpenseTable').style.display = 'none';
+                initializeApp();
+            } else {
+                alert('رمز عبور اشتباه است. لطفاً دوباره تلاش کنید.');
+                document.getElementById('passwordInput').value = '';
+            }
+        }
+
+        async function initializeApp() {
+            await fetchPeriods();
+            currentPeriod = null;
+            resetUI();
+            updateFixedPeriod();
+        }
+
+        async function fetchPeriods() {
+            try {
+                const response = await fetch(API_URL, {
+                    headers: {
+                        'X-Master-Key': API_KEY
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data from jsonbin.io');
+                }
+                const data = await response.json();
+                periods = data.record || {};
+                // Ensure each period has visibility and ended properties
+                Object.keys(periods).forEach(period => {
+                    if (!periods[period].hasOwnProperty('visible')) {
+                        periods[period].visible = true;
+                    }
+                    if (!periods[period].hasOwnProperty('ended')) {
+                        periods[period].ended = false;
+                    }
+                });
+                renderPeriodSelect();
+            } catch (error) {
+                console.error('Error fetching periods:', error);
+                alert('خطا در بارگذاری داده‌ها از سرور. لطفاً دوباره تلاش کنید.');
+                periods = {};
+            }
+        }
+
+        async function savePeriods() {
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(periods)
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to save data to jsonbin.io');
+                }
+                renderPeriodSelect();
+            } catch (error) {
+                console.error('Error saving periods:', error);
+                alert('خطا در ذخیره داده‌ها در سرور. لطفاً دوباره تلاش کنید.');
+            }
+        }
+
+        function updateFixedPeriod() {
+            const fixedPeriodDiv = document.getElementById('fixedPeriod');
+            if (currentPeriod) {
+                fixedPeriodDiv.textContent = `دوره: ${currentPeriod}${periods[currentPeriod].ended ? ' (تمام‌شده)' : ''}`;
+                fixedPeriodDiv.style.display = 'block';
+            } else {
+                fixedPeriodDiv.style.display = 'none';
+            }
+        }
+
+        function showMainPage() {
+            document.getElementById('mainPage').classList.add('active');
+            document.getElementById('reportPage').classList.remove('active');
+            document.getElementById('fixedBackBtn').style.display = 'none';
+            if (userRole === 'user') {
+                renderUserExpenseTable();
+            }
+        }
+
+        function showReportPage() {
+            if (!currentPeriod) {
+                alert('ابتدا یک دوره انتخاب کنید');
+                return;
+            }
+            document.getElementById('reportPage').classList.add('active');
+            document.getElementById('mainPage').classList.remove('active');
+            document.getElementById('fixedBackBtn').style.display = 'block';
+            renderTable();
+            document.getElementById('totalReport').style.display = 'block';
+        }
+
+        async function addPeriod() {
+            const periodName = document.getElementById('periodName').value.trim();
+            if (periodName && !periods[periodName]) {
+                periods[periodName] = { people: [], expenses: [], trusts: [], visible: true, ended: false };
+                currentPeriod = periodName;
+                await savePeriods();
+                document.getElementById('periodName').value = '';
+                loadPeriod();
+            } else {
+                alert('نام دوره معتبر وارد کنید یا دوره تکراری است');
+            }
+        }
+
+        function renderPeriodSelect() {
+            const select = document.getElementById('periodSelect');
+            select.innerHTML = '<option value="">انتخاب دوره</option>';
+            Object.keys(periods).forEach(period => {
+                // Show visible periods for users, all periods for admin
+                if (userRole === 'user' && !periods[period].visible) return;
+                const option = document.createElement('option');
+                option.value = period;
+                option.text = period + (userRole === 'admin' ? ` (${periods[period].visible ? 'قابل مشاهده' : 'مخفی'}${periods[period].ended ? ', تمام‌شده' : ''})` : '');
+                if (period === currentPeriod) option.selected = true;
+                select.appendChild(option);
+            });
+            updateFixedPeriod();
+        }
+
+        function loadPeriod() {
+            const periodName = document.getElementById('periodSelect').value;
+            if (!periodName) {
+                currentPeriod = null;
+                resetUI();
+                updateFixedPeriod();
+                return;
+            }
+            if (!periods[periodName] || (userRole === 'user' && !periods[periodName].visible)) {
+                alert('دوره انتخاب‌شده معتبر نیست یا دسترسی ندارید');
+                currentPeriod = null;
+                resetUI();
+                updateFixedPeriod();
+                return;
+            }
+            currentPeriod = periodName;
+            resetUI();
+            renderPeopleSelect();
+            renderPersonTable();
+            renderTrustTable();
+            if (document.getElementById('reportPage').classList.contains('active')) {
+                renderTable();
+            }
+            if (userRole === 'user') {
+                renderUserExpenseTable();
+                document.getElementById('expenseForm').style.display = periods[currentPeriod].ended ? 'none' : 'block';
+            }
+            updateFixedPeriod();
+        }
+
+        function resetUI() {
+            document.getElementById('expenseBody').innerHTML = '';
+            document.getElementById('userExpenseBody').innerHTML = '';
+            document.getElementById('trustBody').innerHTML = '';
+            document.getElementById('personBody').innerHTML = '';
+            document.getElementById('instantResult').innerHTML = '';
+            document.getElementById('totalReport').innerHTML = '';
+            document.getElementById('customAmounts').style.display = 'none';
+            document.getElementById('customRatioInputs').style.display = 'none';
+            document.getElementById('expenseAmount').value = '';
+            document.getElementById('expenseSubject').value = '';
+            document.getElementById('expensePerson').value = '';
+            document.getElementById('calcMethod').value = 'ratio';
+            document.getElementById('trustPayer').value = '';
+            document.getElementById('trustReceiver').value = '';
+            document.getElementById('trustAmount').value = '';
+            document.getElementById('personTable').style.display = 'table';
+            document.getElementById('trustTable').style.display = 'table';
+            document.getElementById('totalReport').style.display = 'block';
+            document.getElementById('expensePerson').innerHTML = '<option value="">انتخاب فرد یا گروه</option>';
+            document.getElementById('trustPayer').innerHTML = '<option value="">انتخاب پرداخت‌کننده</option>';
+            document.getElementById('trustReceiver').innerHTML = '<option value="">انتخاب دریافت‌کننده</option>';
+            document.getElementById('expenseForm').style.display = (userRole === 'user' && currentPeriod && periods[currentPeriod].ended) ? 'none' : 'block';
+            editingExpenseIndex = null;
+            document.querySelector('.add-expense-btn').textContent = 'اضافه کردن هزینه';
+        }
+
+        function toggleGroupInput() {
+            const isGroup = document.getElementById('isGroup').value;
+            document.getElementById('groupCountDiv').style.display = isGroup === 'yes' ? 'block' : 'none';
+        }
+
+        async function addPerson() {
+            if (!currentPeriod) {
+                alert('ابتدا یک دوره انتخاب یا ایجاد کنید');
+                return;
+            }
+            const name = document.getElementById('personName').value.trim();
+            const isGroup = document.getElementById('isGroup').value;
+            const groupCount = isGroup === 'yes' ? parseInt(document.getElementById('groupCount').value) : 1;
+            if (periods[currentPeriod].people.some(person => person.name === name)) {
+                alert('این نام قبلاً ثبت شده است. لطفاً نام دیگری انتخاب کنید.');
+                return;
+            }
+            if (name && groupCount >= 1) {
+                periods[currentPeriod].people.push({ name, isGroup: isGroup === 'yes', groupCount });
+                await savePeriods();
+                document.getElementById('personName').value = '';
+                document.getElementById('isGroup').value = 'no';
+                document.getElementById('groupCount').value = '1';
+                document.getElementById('groupCountDiv').style.display = 'none';
+                document.getElementById('personTable').style.display = 'table';
+                renderPeopleSelect();
+                renderPersonTable();
+            } else {
+                alert('نام و تعداد نفرات معتبر وارد کنید');
+            }
+        }
+
+        async function deletePerson(index) {
+            if (!currentPeriod || !periods[currentPeriod]) return;
+            const personName = periods[currentPeriod].people[index].name;
+            const inExpenses = periods[currentPeriod].expenses.some(exp => exp.person === personName);
+            const inTrusts = periods[currentPeriod].trusts.some(trust => trust.payer === personName || trust.receiver === personName);
+            if (inExpenses || inTrusts) {
+                alert('این فرد در هزینه‌ها یا تنخواه‌ها ثبت شده است و نمی‌توان حذف کرد.');
+                return;
+            }
+            if (confirm(`آیا مطمئن هستید که می‌خواهید "${personName}" را حذف کنید؟`)) {
+                periods[currentPeriod].people.splice(index, 1);
+                await savePeriods();
+                renderPeopleSelect();
+                renderPersonTable();
+            }
+        }
+
+        function renderPersonTable() {
+            const tbody = document.getElementById('personBody');
+            tbody.innerHTML = '';
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].people.forEach((person, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${person.name}</td>
+                        <td>${person.isGroup ? 'گروه' : 'فرد'}</td>
+                        <td>${person.groupCount}</td>
+                        <td><button class="delete-btn" onclick="deletePerson(${index})">حذف</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        function renderPeopleSelect() {
+            const expenseSelect = document.getElementById('expensePerson');
+            const trustPayerSelect = document.getElementById('trustPayer');
+            const trustReceiverSelect = document.getElementById('trustReceiver');
+            expenseSelect.innerHTML = '<option value="">انتخاب فرد یا گروه</option>';
+            trustPayerSelect.innerHTML = '<option value="">انتخاب پرداخت‌کننده</option>';
+            trustReceiverSelect.innerHTML = '<option value="">انتخاب دریافت‌کننده</option>';
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].people.forEach(person => {
+                    const option1 = document.createElement('option');
+                    option1.value = person.name;
+                    option1.text = person.isGroup ? `${person.name} (${person.groupCount} نفر)` : person.name;
+                    expenseSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = person.name;
+                    option2.text = person.isGroup ? `${person.name} (${person.groupCount} نفر)` : person.name;
+                    trustPayerSelect.appendChild(option2);
+
+                    const option3 = document.createElement('option');
+                    option3.value = person.name;
+                    option3.text = person.isGroup ? `${person.name} (${person.groupCount} نفر)` : person.name;
+                    trustReceiverSelect.appendChild(option3);
+                });
+            }
+        }
+
+        function renderCustomInputs() {
+            const customInputs = document.getElementById('customInputs');
+            customInputs.innerHTML = '';
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].people.forEach(person => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label>${person.name}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}:</label>
+                        <input type="number" class="custom-amount" data-person="${person.name}" placeholder="مبلغ به تومان">
+                    `;
+                    customInputs.appendChild(div);
+                });
+            }
+        }
+
+        function renderRatioInputs() {
+            const ratioInputs = document.getElementById('ratioInputs');
+            ratioInputs.innerHTML = '';
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].people.forEach(person => {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <label>${person.name}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}:</label>
+                        <input type="number" class="ratio-amount" data-person="${person.name}" placeholder="ضریب" step="0.1" min="0">
+                    `;
+                    ratioInputs.appendChild(div);
+                });
+            }
+        }
+
+        document.getElementById('calcMethod').addEventListener('change', function() {
+            const method = this.value;
+            const customDiv = document.getElementById('customAmounts');
+            const ratioDiv = document.getElementById('customRatioInputs');
+            customDiv.style.display = method === 'custom' ? 'block' : 'none';
+            ratioDiv.style.display = method === 'customRatio' ? 'block' : 'none';
+            if (method === 'custom') {
+                renderCustomInputs();
+            } else if (method === 'customRatio') {
+                renderRatioInputs();
+            }
+        });
+
+        async function addExpense() {
+            if (!currentPeriod || !periods[currentPeriod]) {
+                alert('ابتدا یک دوره انتخاب یا ایجاد کنید');
+                return;
+            }
+            if (userRole === 'user' && periods[currentPeriod].ended) {
+                alert('این دوره به اتمام رسیده است و نمی‌توانید هزینه اضافه کنید.');
+                return;
+            }
+            const person = document.getElementById('expensePerson').value;
+            const subject = document.getElementById('expenseSubject').value.trim();
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            const method = document.getElementById('calcMethod').value;
+            if (person && subject && amount > 0) {
+                let shares = calculateInstantShares(amount, method);
+                if (Object.keys(shares).length === 0) return;
+                if (editingExpenseIndex !== null) {
+                    periods[currentPeriod].expenses[editingExpenseIndex] = { person, subject, amount, method, shares };
+                    editingExpenseIndex = null;
+                    document.querySelector('.add-expense-btn').textContent = 'اضافه کردن هزینه';
+                } else {
+                    periods[currentPeriod].expenses.push({ person, subject, amount, method, shares });
+                }
+                await savePeriods();
+                document.getElementById('expensePerson').value = '';
+                document.getElementById('expenseSubject').value = '';
+                document.getElementById('expenseAmount').value = '';
+                document.getElementById('calcMethod').value = 'ratio';
+                document.getElementById('customAmounts').style.display = 'none';
+                document.getElementById('customRatioInputs').style.display = 'none';
+                showInstantResult(amount, shares, method, subject);
+                if (document.getElementById('reportPage').classList.contains('active')) {
+                    renderTable();
+                }
+                if (userRole === 'user') {
+                    renderUserExpenseTable();
+                }
+            } else {
+                alert('فرد، موضوع و مبلغ معتبر وارد کنید');
+            }
+        }
+
+        async function editExpense(index) {
+            if (!currentPeriod || !periods[currentPeriod]) return;
+            const expense = periods[currentPeriod].expenses[index];
+            editingExpenseIndex = index;
+            document.getElementById('expensePerson').value = expense.person;
+            document.getElementById('expenseSubject').value = expense.subject;
+            document.getElementById('expenseAmount').value = expense.amount;
+            document.getElementById('calcMethod').value = expense.method;
+            const customDiv = document.getElementById('customAmounts');
+            const ratioDiv = document.getElementById('customRatioInputs');
+            customDiv.style.display = expense.method === 'custom' ? 'block' : 'none';
+            ratioDiv.style.display = expense.method === 'customRatio' ? 'block' : 'none';
+            if (expense.method === 'custom') {
+                renderCustomInputs();
+                document.querySelectorAll('.custom-amount').forEach(input => {
+                    input.value = expense.shares[input.dataset.person] || 0;
+                });
+            } else if (expense.method === 'customRatio') {
+                renderRatioInputs();
+                document.querySelectorAll('.ratio-amount').forEach(input => {
+                    input.value = expense.shares[input.dataset.person] / (expense.amount / Object.values(expense.shares).reduce((sum, val) => sum + val, 0)) || 0;
+                });
+            }
+            document.querySelector('.add-expense-btn').textContent = 'ویرایش هزینه';
+            document.getElementById('mainPage').classList.add('active');
+            document.getElementById('reportPage').classList.remove('active');
+            document.getElementById('fixedBackBtn').style.display = 'none';
+        }
+
+        async function addTrust() {
+            if (!currentPeriod || !periods[currentPeriod]) {
+                alert('ابتدا یک دوره انتخاب یا ایجاد کنید');
+                return;
+            }
+            const payer = document.getElementById('trustPayer').value;
+            const receiver = document.getElementById('trustReceiver').value;
+            const amount = parseFloat(document.getElementById('trustAmount').value);
+            if (payer && receiver && amount > 0 && payer !== receiver) {
+                periods[currentPeriod].trusts.push({ payer, receiver, amount });
+                await savePeriods();
+                document.getElementById('trustPayer').value = '';
+                document.getElementById('trustReceiver').value = '';
+                document.getElementById('trustAmount').value = '';
+                document.getElementById('trustTable').style.display = 'table';
+                renderTrustTable();
+                showInstantTrustResult(payer, receiver, amount);
+            } else {
+                alert('پرداخت‌کننده، دریافت‌کننده و مبلغ معتبر انتخاب کنید (پرداخت‌کننده و دریافت‌کننده نمی‌توانند یکسان باشند)');
+            }
+        }
+
+        function showInstantTrustResult(payer, receiver, amount) {
+            const result = `
+                <strong>تنخواه جدید: ${amount.toLocaleString()} تومان</strong><br>
+                پرداخت‌کننده: ${payer}<br>
+                دریافت‌کننده: ${receiver}<br>
+            `;
+            document.getElementById('instantResult').innerHTML = result;
+        }
+
+        function showInstantResult(amount, shares, method, subject) {
+            let result = `<strong>هزینه جدید: ${amount.toLocaleString()} تومان</strong><br>`;
+            result += `<strong>موضوع: ${subject}</strong><br>`;
+            result += `<h4>سهم این هزینه (${
+                method === 'equal' ? 'مساوی' :
+                method === 'ratio' ? 'به نسبت نفرات' :
+                method === 'custom' ? 'دلخواه' : 'به نسبت ضرایب'
+            }):</h4>`;
+            if (currentPeriod && periods[currentPeriod]) {
+                Object.keys(shares).forEach(personName => {
+                    const person = periods[currentPeriod].people.find(p => p.name === personName);
+                    if (person) {
+                        result += `${personName}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}: ${shares[personName].toLocaleString()} تومان<br>`;
+                    }
+                });
+                if (method === 'custom') {
+                    const totalCustom = Object.values(shares).reduce((sum, val) => sum + val, 0);
+                    if (Math.abs(totalCustom - amount) > 1) {
+                        result += `<span style="color: red;">خطا: مجموع مبالغ دلخواه (${totalCustom.toLocaleString()}) با هزینه (${amount.toLocaleString()}) برابر نیست</span>`;
+                    }
+                }
+            }
+            document.getElementById('instantResult').innerHTML = result;
+        }
+
+        async function deleteTrust(index) {
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].trusts.splice(index, 1);
+                await savePeriods();
+                renderTrustTable();
+                document.getElementById('instantResult').innerHTML = '';
+            }
+        }
+
+        async function deleteExpense(index) {
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].expenses.splice(index, 1);
+                await savePeriods();
+                renderTable();
+                if (userRole === 'user') {
+                    renderUserExpenseTable();
+                }
+                document.getElementById('instantResult').innerHTML = '';
+            }
+        }
+
+        function renderTrustTable() {
+            const tbody = document.getElementById('trustBody');
+            tbody.innerHTML = '';
+            if (currentPeriod && periods[currentPeriod] && periods[currentPeriod].trusts) {
+                periods[currentPeriod].trusts.forEach((trust, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${trust.payer}</td>
+                        <td>${trust.receiver}</td>
+                        <td>${trust.amount.toLocaleString()} تومان</td>
+                        <td><button class="delete-btn" onclick="deleteTrust(${index})">حذف</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('expenseBody');
+            tbody.innerHTML = '';
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].expenses.forEach((exp, index) => {
+                    let shareText = '';
+                    Object.keys(exp.shares).forEach(personName => {
+                        const person = periods[currentPeriod].people.find(p => p.name === personName);
+                        if (person) {
+                            shareText += `${personName}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}: ${exp.shares[personName].toLocaleString()} تومان<br>`;
+                        }
+                    });
+                    const row = document.createElement('tr');
+                    let actions = userRole === 'admin' ? `<button class="delete-btn" onclick="deleteExpense(${index})">حذف</button> <button class="edit-btn" onclick="editExpense(${index})">ویرایش</button>` : '';
+                    row.innerHTML = `
+                        <td>${exp.person}</td>
+                        <td>${exp.subject}</td>
+                        <td>${exp.amount.toLocaleString()} تومان</td>
+                        <td>${shareText}</td>
+                        <td>${actions}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        }
+
+        function renderUserExpenseTable() {
+            const tbody = document.getElementById('userExpenseBody');
+            tbody.innerHTML = '';
+            if (currentPeriod && periods[currentPeriod]) {
+                periods[currentPeriod].expenses.forEach((exp, index) => {
+                    let shareText = '';
+                    Object.keys(exp.shares).forEach(personName => {
+                        const person = periods[currentPeriod].people.find(p => p.name === personName);
+                        if (person) {
+                            shareText += `${personName}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}: ${exp.shares[personName].toLocaleString()} تومان<br>`;
+                        }
+                    });
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${exp.person}</td>
+                        <td>${exp.subject}</td>
+                        <td>${exp.amount.toLocaleString()} تومان</td>
+                        <td>${shareText}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+            document.getElementById('userExpenseTable').style.display = currentPeriod ? 'table' : 'none';
+        }
+
+        function calculateInstantShares(amount, method) {
+            let shares = {};
+            if (!currentPeriod || !periods[currentPeriod]) return shares;
+            if (method === 'equal') {
+                const share = amount / periods[currentPeriod].people.length;
+                periods[currentPeriod].people.forEach(person => {
+                    shares[person.name] = share;
+                });
+            } else if (method === 'ratio') {
+                const totalPeople = periods[currentPeriod].people.reduce((sum, p) => sum + p.groupCount, 0);
+                const perPerson = amount / totalPeople;
+                periods[currentPeriod].people.forEach(person => {
+                    shares[person.name] = perPerson * person.groupCount;
+                });
+            } else if (method === 'custom') {
+                const inputs = document.querySelectorAll('.custom-amount');
+                inputs.forEach(input => {
+                    const value = parseFloat(input.value) || 0;
+                    shares[input.dataset.person] = value;
+                });
+            } else if (method === 'customRatio') {
+                const inputs = document.querySelectorAll('.ratio-amount');
+                let totalRatio = 0;
+                inputs.forEach(input => {
+                    const value = parseFloat(input.value) || 0;
+                    totalRatio += value;
+                    shares[input.dataset.person] = value;
+                });
+                if (totalRatio === 0) {
+                    alert('جمع ضرایب نمی‌تواند صفر باشد');
+                    return {};
+                }
+                const perRatio = amount / totalRatio;
+                Object.keys(shares).forEach(person => {
+                    shares[person] = shares[person] * perRatio;
+                });
+            }
+            return shares;
+        }
+
+        function hideTotalReport() {
+            document.getElementById('totalReport').style.display = 'none';
+        }
+
+        function showPersonTable() {
+            document.getElementById('personTable').style.display = 'table';
+        }
+
+        function hidePersonTable() {
+            document.getElementById('personTable').style.display = 'none';
+        }
+
+        function showTrustTable() {
+            document.getElementById('trustTable').style.display = 'table';
+        }
+
+        function hideTrustTable() {
+            document.getElementById('trustTable').style.display = 'none';
+        }
+
+        async function resetPeriod() {
+            if (!currentPeriod) {
+                alert('ابتدا یک دوره انتخاب کنید');
+                return;
+            }
+            if (confirm('آیا مطمئن هستید که می‌خواهید این دوره را ریست کنید بدون تولید گزارش؟')) {
+                delete periods[currentPeriod];
+                currentPeriod = null;
+                await savePeriods();
+                resetUI();
+                showMainPage();
+                renderPeriodSelect();
+            }
+        }
+
+        async function togglePeriodVisibility(visible) {
+            if (!currentPeriod) {
+                alert('ابتدا یک دوره انتخاب کنید');
+                return;
+            }
+            periods[currentPeriod].visible = visible;
+            await savePeriods();
+            renderPeriodSelect();
+        }
+
+        function generateExcelReport() {
+            if (!currentPeriod) {
+                alert('ابتدا یک دوره انتخاب کنید');
+                return;
+            }
+            if (!periods[currentPeriod]) {
+                alert('دوره انتخاب‌شده معتبر نیست');
+                return;
+            }
+            if (!periods[currentPeriod].expenses || periods[currentPeriod].expenses.length === 0) {
+                alert('هیچ هزینه‌ای برای این دوره ثبت نشده است');
+                return;
+            }
+            if (typeof XLSX === 'undefined') {
+                alert('کتابخانه SheetJS بارگذاری نشده است. لطفاً اتصال اینترنت را بررسی کنید یا فایل xlsx.full.min.js را به‌صورت محلی اضافه کنید.');
+                return;
+            }
+
+            try {
+                let totalShares = {};
+                let totalSpent = 0;
+                let subjectTotals = {};
+
+                periods[currentPeriod].people.forEach(person => {
+                    totalShares[person.name] = {
+                        total: 0,
+                        paid: 0,
+                        trustsPaid: 0,
+                        trustsReceived: 0,
+                        isGroup: person.isGroup,
+                        count: person.groupCount
+                    };
+                });
+
+                periods[currentPeriod].expenses.forEach(exp => {
+                    totalSpent += exp.amount;
+                    totalShares[exp.person].paid += exp.amount;
+                    Object.keys(exp.shares).forEach(person => {
+                        totalShares[person].total += exp.shares[person];
+                    });
+                    if (!subjectTotals[exp.subject]) {
+                        subjectTotals[exp.subject] = 0;
+                    }
+                    subjectTotals[exp.subject] += exp.amount;
+                });
+
+                if (periods[currentPeriod].trusts) {
+                    periods[currentPeriod].trusts.forEach(trust => {
+                        totalShares[trust.payer].trustsPaid += trust.amount;
+                        totalShares[trust.receiver].trustsReceived += trust.amount;
+                    });
+                }
+
+                let expenseSheet = [];
+                let expenseHeader = {
+                    'شماره': 'شماره',
+                    'فرد/گروه': 'فرد/گروه',
+                    'موضوع': 'موضوع',
+                    'مبلغ': 'مبلغ',
+                    'روش تقسیم': 'روش تقسیم'
+                };
+                periods[currentPeriod].people.forEach(person => {
+                    expenseHeader[`سهم ${person.name}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}`] = `سهم ${person.name}${person.isGroup ? ` (${person.groupCount} نفر)` : ''}`;
+                });
+                expenseSheet.push(expenseHeader);
+
+                periods[currentPeriod].expenses.forEach((exp, index) => {
+                    let expenseRow = {
+                        'شماره': index + 1,
+                        'فرد/گروه': exp.person,
+                        'موضوع': exp.subject,
+                        'مبلغ': exp.amount,
+                        'روش تقسیم': exp.method === 'equal' ? 'مساوی' :
+                                      exp.method === 'ratio' ? 'به نسبت نفرات' :
+                                      exp.method === 'custom' ? 'دلخواه' : 'به نسبت ضرایب'
+                    };
+                    Object.keys(exp.shares).forEach(person => {
+                        expenseRow[`سهم ${person}${totalShares[person].isGroup ? ` (${totalShares[person].count} نفر)` : ''}`] = exp.shares[person];
+                    });
+                    expenseSheet.push(expenseRow);
+                });
+
+                let subjectSheet = [];
+                subjectSheet.push({
+                    'موضوع': 'موضوع',
+                    'مجموع مبلغ': 'مجموع مبلغ'
+                });
+                Object.keys(subjectTotals).forEach(subject => {
+                    subjectSheet.push({
+                        'موضوع': subject,
+                        'مجموع مبلغ': subjectTotals[subject]
+                    });
+                });
+
+                let trustSheet = [];
+                if (periods[currentPeriod].trusts && periods[currentPeriod].trusts.length > 0) {
+                    trustSheet.push({
+                        'شماره': 'شماره',
+                        'پرداخت‌کننده': 'پرداخت‌کننده',
+                        'دریافت‌کننده': 'دریافت‌کننده',
+                        'مبلغ': 'مبلغ'
+                    });
+                    periods[currentPeriod].trusts.forEach((trust, index) => {
+                        trustSheet.push({
+                            'شماره': index + 1,
+                            'پرداخت‌کننده': trust.payer,
+                            'دریافت‌کننده': trust.receiver,
+                            'مبلغ': trust.amount
+                        });
+                    });
+                }
+
+                let summarySheet = [];
+                summarySheet.push({
+                    'فرد/گروه': 'فرد/گروه',
+                    'مبلغ پرداخت‌شده': 'مبلغ پرداخت‌شده',
+                    'تنخواه پرداخت‌شده': 'تنخواه پرداخت‌شده',
+                    'تنخواه دریافت‌شده': 'تنخواه دریافت‌شده',
+                    'جمع پرداخت‌ها': 'جمع پرداخت‌ها',
+                    'سهم': 'سهم',
+                    'تفاضل': 'تفاضل',
+                    'وضعیت': 'وضعیت'
+                });
+                Object.keys(totalShares).forEach(personName => {
+                    const person = totalShares[personName];
+                    const totalPaid = person.paid + person.trustsPaid - person.trustsReceived;
+                    const difference = totalPaid - person.total;
+                    summarySheet.push({
+                        'فرد/گروه': personName,
+                        'مبلغ پرداخت‌شده': person.paid,
+                        'تنخواه پرداخت‌شده': person.trustsPaid,
+                        'تنخواه دریافت‌شده': person.trustsReceived,
+                        'جمع پرداخت‌ها': totalPaid,
+                        'سهم': person.total,
+                        'تفاضل': difference,
+                        'وضعیت': difference > 0 ? 'طلبکار' : difference < 0 ? 'بدهکار' : 'تسویه'
+                    });
+                });
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expenseSheet), 'هزینه‌ها');
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(subjectSheet), 'مجموع موضوعات');
+                if (trustSheet.length > 0) {
+                    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trustSheet), 'تنخواه‌ها');
+                }
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summarySheet), 'پرداخت‌ها و سهم‌ها');
+
+                XLSX.writeFile(wb, `گزارش_${currentPeriod}.xlsx`);
+            } catch (error) {
+                console.error('خطا در تولید فایل اکسل:', error);
+                alert('خطایی در تولید فایل اکسل رخ داد. لطفاً دوباره امتحان کنید یا کنسول مرورگر را بررسی کنید.');
+            }
+        }
+
+        function showTotalShares() {
+            if (!currentPeriod || !periods[currentPeriod]) {
+                alert('ابتدا یک دوره انتخاب کنید');
+                return;
+            }
+            if (!periods[currentPeriod].expenses || !periods[currentPeriod].expenses.length) {
+                alert('هیچ هزینه‌ای برای این دوره ثبت نشده است');
+                return;
+            }
+            
+            let totalShares = {};
+            let totalSpent = 0;
+            
+            periods[currentPeriod].people.forEach(person => {
+                totalShares[person.name] = {
+                    total: 0,
+                    paid: 0,
+                    trustsPaid: 0,
+                    trustsReceived: 0,
+                    isGroup: person.isGroup,
+                    count: person.groupCount
+                };
+            });
+
+            periods[currentPeriod].expenses.forEach(exp => {
+                totalSpent += exp.amount;
+                totalShares[exp.person].paid += exp.amount;
+                Object.keys(exp.shares).forEach(person => {
+                    totalShares[person].total += exp.shares[person];
+                });
+            });
+
+            if (periods[currentPeriod].trusts) {
+                periods[currentPeriod].trusts.forEach(trust => {
+                    totalShares[trust.payer].trustsPaid += trust.amount;
+                    totalShares[trust.receiver].trustsReceived += trust.amount;
+                });
+            }
+
+            const reportDiv = document.getElementById('totalReport');
+            let reportHTML = `
+                <h3>گزارش نهایی: ${currentPeriod}</h3>
+                <p>مجموع کل هزینه‌ها: <span class="highlight">${totalSpent.toLocaleString()} تومان</span></p>
+                <h4>پرداخت‌ها و سهم‌ها:</h4>
+            `;
+
+            Object.keys(totalShares).forEach(personName => {
+                const person = totalShares[personName];
+                const totalPaid = person.paid + person.trustsPaid - person.trustsReceived;
+                const difference = totalPaid - person.total;
+                const status = difference > 0 ? 'طلبکار' : difference < 0 ? 'بدهکار' : 'تسویه';
+                reportHTML += `
+                    <div class="person-share">
+                        ${personName} ${person.isGroup ? `(${person.count} نفر)` : ''}:<br>
+                        مبلغ پرداخت‌شده: <span class="highlight">${person.paid.toLocaleString()} تومان</span><br>
+                        تنخواه پرداخت‌شده: <span class="highlight">${person.trustsPaid.toLocaleString()} تومان</span><br>
+                        تنخواه دریافت‌شده: <span class="highlight">${person.trustsReceived.toLocaleString()} تومان</span><br>
+                        جمع پرداخت‌ها: <span class="highlight">${totalPaid.toLocaleString()} تومان</span><br>
+                        سهم: <span class="highlight">${person.total.toLocaleString()} تومان</span><br>
+                        تفاضل: <span class="highlight">${difference.toLocaleString()} تومان</span><br>
+                        وضعیت: <span class="highlight">${status}</span>
+                    </div>
+                `;
+            });
+
+            reportDiv.innerHTML = reportHTML;
+            reportDiv.style.display = 'block';
+        }
+
+        async function endPeriod() {
+            if (!currentPeriod) {
+                alert('ابتدا یک دوره انتخاب کنید');
+                return;
+            }
+            if (confirm('آیا دوره به پایان رسیده و می‌خواهید گزارش اکسل تولید شود؟')) {
+                generateExcelReport();
+                periods[currentPeriod].ended = true;
+                await savePeriods();
+                if (confirm('آیا مطمئن هستید که می‌خواهید این دوره را ریست کنید؟')) {
+                    delete periods[currentPeriod];
+                    currentPeriod = null;
+                    await savePeriods();
+                    resetUI();
+                    showMainPage();
+                    renderPeriodSelect();
+                }
+            }
+        }
+
+        window.onload = () => {
+            document.getElementById('mainPage').classList.remove('active');
+            document.getElementById('passwordPrompt').style.display = 'flex';
+            document.getElementById('passwordInput').focus();
+        };
+    </script>
+</body>
+</html>
