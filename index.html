@@ -431,7 +431,7 @@
 
         function checkPassword() {
             const password = document.getElementById('passwordInput').value;
-            if (password === '22322344') {
+            if (password === 'user') {
                 userRole = 'user';
                 document.getElementById('passwordPrompt').style.display = 'none';
                 document.getElementById('mainPage').classList.add('active');
@@ -443,7 +443,7 @@
                 document.getElementById('visibilityControls').style.display = 'none';
                 document.getElementById('userExpenseTable').style.display = 'table';
                 initializeApp();
-            } else if (password === 'Fa22322344!' || password === 'admin') {
+            } else if (password === 'admin' || password === 'admin') {
                 userRole = 'admin';
                 document.getElementById('passwordPrompt').style.display = 'none';
                 document.getElementById('mainPage').classList.add('active');
